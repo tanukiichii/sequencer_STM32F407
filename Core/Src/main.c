@@ -28,6 +28,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "audio.h"
+#include "leds.h"
+#include "pattern.h"
 #include "tm1638.h"
 #include <math.h>
 /* USER CODE END Includes */
@@ -108,27 +110,39 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM2_Init();
   MX_DAC_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-  /*
-  CS43_Init(hi2c1, MODE_ANALOG);
-  CS43_SetVolume(50);
-  CS43_Enable_RightLeft(CS43_RIGHT_LEFT);
-  CS43_Start();
-*/
   TM1638_Init();
+  init_pattern();
+  LEDS_Init();
+  
+  LEDS_AllOn();
   
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   
+  HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim2);
+  
+  record_sample_to_slot(1, 11);
+  record_sample_to_slot(8, 11);
+  record_sample_to_slot(2, 12);
+  record_sample_to_slot(6, 12);
+  record_sample_to_slot(10, 12);
+  record_sample_to_slot(14, 12);
+  record_sample_to_slot(4, 13);
+  record_sample_to_slot(12, 13);
+  
+  start_pattern_playback();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   uint16_t key;
   uint8_t btn_pushed = 0;
+
   while (1)
   {
-     key = TM1638_ReadKeys();
+     /*key = TM1638_ReadKeys();
      
      for(int i = 0; i < NUM_SAMPLES; i++)
      {
@@ -140,7 +154,22 @@ int main(void)
         }
      }
      HAL_Delay(50);
-     btn_pushed = 0;
+     btn_pushed = 0;*/
+    
+    if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) && !btn_pushed)
+    {   
+      if(!is_playing_pattern)
+      {
+        start_pattern_playback();
+      }
+      else
+      {
+        stop_pattern_playback();
+      }
+      btn_pushed = 1;
+    }
+     HAL_Delay(200);
+    btn_pushed = 0;
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -171,8 +200,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 50;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -188,7 +217,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
   {
     Error_Handler();
   }
@@ -207,7 +236,24 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       audio_callback();
     }
-	
+    else if(htim->Instance == TIM3) 
+    {    
+      static uint32_t tick_counter = 0;
+      uint32_t ticks_per_slot = (15000/120) / 10 ; //bpm = 60
+    
+      tick_counter++;
+    
+      if(tick_counter >= ticks_per_slot) 
+      {
+          tick_counter = 0;
+        
+          static uint8_t current_slot = 0;
+          current_slot = (current_slot + 1) % NUM_SLOTS;
+        
+          LEDS_IndicateSlot(current_slot);
+          play_samples_for_slot(current_slot);
+      }
+    } 
 }
 /* USER CODE END 4 */
 
