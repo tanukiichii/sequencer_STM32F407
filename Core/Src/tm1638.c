@@ -122,22 +122,23 @@ uint16_t TM1638_ReadKeys(void)
     STB_HIGH();
 
     // ?????????? ????????? ?? ?????
-    result |= (keyData[0] & 0x04) >> 2;        // S1 -> ??? 0
-    result |= (keyData[0] & 0x40) >> 4;        // S2 -> ??? 1
-    result |= (keyData[1] & 0x04) >> 2 << 2;   // S3 -> ??? 2
-    result |= (keyData[1] & 0x40) >> 4 << 3;   // S4 -> ??? 3
-    result |= (keyData[2] & 0x04) >> 2 << 4;   // S5 -> ??? 4
-    result |= (keyData[2] & 0x40) >> 4 << 5;   // S6 -> ??? 5
-    result |= (keyData[3] & 0x04) >> 2 << 6;   // S7 -> ??? 6
-    result |= (keyData[3] & 0x40) >> 4 << 7;   // S8 -> ??? 7
-    result |= (keyData[0] & 0x02) >> 1 << 8;   // S9 -> ??? 8
-    result |= (keyData[0] & 0x20) >> 5 << 9;   // S10 -> ??? 9
-    result |= (keyData[1] & 0x02) >> 1 << 10;  // S11 -> ??? 10
-    result |= (keyData[1] & 0x20) >> 5 << 11;  // S12 -> ??? 11
-    result |= (keyData[2] & 0x02) >> 1 << 12;  // S13 -> ??? 12
-    result |= (keyData[2] & 0x20) >> 5 << 13;  // S14 -> ??? 13
-    result |= (keyData[3] & 0x02) >> 1 << 14;  // S15 -> ??? 14
-    result |= (keyData[3] & 0x20) >> 5 << 15;  // S16 -> ??? 15
+    result |= (keyData[0] & 0x04) ? (1 << 0) : 0;  // S1
+    result |= (keyData[0] & 0x40) ? (1 << 1) : 0;  // S2  
+    result |= (keyData[1] & 0x04) ? (1 << 2) : 0;  // S3
+    result |= (keyData[1] & 0x40) ? (1 << 3) : 0;  // S4
+    result |= (keyData[2] & 0x04) ? (1 << 4) : 0;  // S5
+    result |= (keyData[2] & 0x40) ? (1 << 5) : 0;  // S6
+    result |= (keyData[3] & 0x04) ? (1 << 6) : 0;  // S7
+    result |= (keyData[3] & 0x40) ? (1 << 7) : 0;  // S8  
+
+    result |= (keyData[0] & 0x02) ? (1 << 8) : 0;  // S9
+    result |= (keyData[0] & 0x20) ? (1 << 9) : 0;  // S10
+    result |= (keyData[1] & 0x02) ? (1 << 10) : 0; // S11
+    result |= (keyData[1] & 0x20) ? (1 << 11) : 0; // S12
+    result |= (keyData[2] & 0x02) ? (1 << 12) : 0; // S13
+    result |= (keyData[2] & 0x20) ? (1 << 13) : 0; // S14
+    result |= (keyData[3] & 0x02) ? (1 << 14) : 0; // S15
+    result |= (keyData[3] & 0x20) ? (1 << 15) : 0; // S16
 
     return result;
 }
@@ -163,4 +164,3 @@ uint8_t TM1638_TestResponse(void)
 
     return val;
 }
-
