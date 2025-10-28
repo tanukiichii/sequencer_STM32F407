@@ -28,7 +28,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "audio.h"
+#include "buttons.h"
 #include "leds.h"
+#include "modes.h"
 #include "pattern.h"
 #include "tm1638.h"
 #include <math.h>
@@ -66,14 +68,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-float MySinVal;
-float sample_dt;
-uint16_t sample_N;
-uint16_t i_t;
-uint32_t MyDacVal;
-int16_t I2S_data[4];
 
-uint8_t playing = 0;
 /* USER CODE END 0 */
 
 /**
@@ -83,8 +78,7 @@ uint8_t playing = 0;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  sample_dt = F_OUT/F_SAMPLE;
-  sample_N = F_SAMPLE/F_OUT;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -115,61 +109,44 @@ int main(void)
   TM1638_Init();
   init_pattern();
   LEDS_Init();
-  
-  LEDS_AllOn();
+  mode_handler_init();
   
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim2);
-  
-  record_sample_to_slot(1, 11);
-  record_sample_to_slot(8, 11);
-  record_sample_to_slot(2, 12);
-  record_sample_to_slot(6, 12);
-  record_sample_to_slot(10, 12);
-  record_sample_to_slot(14, 12);
-  record_sample_to_slot(4, 13);
-  record_sample_to_slot(12, 13);
-  
-  start_pattern_playback();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  uint16_t key;
-  uint8_t btn_pushed = 0;
 
   while (1)
   {
-     /*key = TM1638_ReadKeys();
-     
-     for(int i = 0; i < NUM_SAMPLES; i++)
-     {
-        if(key & (1 << i) && !btn_pushed)
-        {
-          play_sample(i);
-          btn_pushed = 1;
-          break;
-        }
-     }
-     HAL_Delay(50);
-     btn_pushed = 0;*/
+    SEQ_MODE current_mode = get_current_mode();
+    handle_mode_button();
+    handle_tm1638_buttons();
+    handle_control_button();
+       
     
-    if(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_11) && !btn_pushed)
-    {   
-      if(!is_playing_pattern)
-      {
-        start_pattern_playback();
-      }
-      else
-      {
-        stop_pattern_playback();
-      }
-      btn_pushed = 1;
-    }
-     HAL_Delay(200);
-    btn_pushed = 0;
+    /*    switch (current_mode)
+    {
+      case MUTE:
+        LEDS_AllOff();
+        LEDS_On(1);
+        break;      
+    case PLAY:
+        LEDS_AllOff();
+        LEDS_On(2);
+        break;
+    case REC:
+      LEDS_AllOff();
+        LEDS_On(3);
+        break;
+    case EDIT:
+        LEDS_AllOff();
+        LEDS_On(4);
+        break;
+    }*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -234,25 +211,29 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	
     if(htim->Instance == TIM2)
     {
-      audio_callback();
+      if(get_current_mode() != MUTE) 
+      {
+            audio_callback();
+        }
     }
     else if(htim->Instance == TIM3) 
     {    
-      static uint32_t tick_counter = 0;
-      uint32_t ticks_per_slot = (15000/120) / 10 ; //bpm = 60
+        static uint32_t tick_counter = 0;
+        uint32_t ticks_per_slot = (15000/120) / 10; 
     
-      tick_counter++;
+        tick_counter++;
     
-      if(tick_counter >= ticks_per_slot) 
-      {
-          tick_counter = 0;
-        
-          static uint8_t current_slot = 0;
-          current_slot = (current_slot + 1) % NUM_SLOTS;
-        
-          LEDS_IndicateSlot(current_slot);
-          play_samples_for_slot(current_slot);
-      }
+        if(tick_counter >= ticks_per_slot) 
+        {
+            tick_counter = 0;
+            
+            if(get_current_mode() == PLAY || get_current_mode() == REC) 
+            {
+                current_slot = (current_slot + 1) % NUM_SLOTS;
+                LEDS_IndicateSlot(current_slot);
+                play_samples_for_slot(current_slot);
+            }
+        }
     } 
 }
 /* USER CODE END 4 */
