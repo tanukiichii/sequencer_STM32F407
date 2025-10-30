@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "dac.h"
 #include "dma.h"
 #include "i2c.h"
@@ -28,6 +29,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "audio.h"
+#include "bpm.h"
 #include "buttons.h"
 #include "leds.h"
 #include "modes.h"
@@ -57,7 +59,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+volatile uint16_t adc_value = 0;
+volatile uint16_t bpm;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -105,6 +108,9 @@ int main(void)
   MX_TIM2_Init();
   MX_DAC_Init();
   MX_TIM3_Init();
+  MX_ADC1_Init();
+  MX_TIM4_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   TM1638_Init();
   init_pattern();
@@ -128,6 +134,8 @@ int main(void)
     handle_tm1638_buttons();
     handle_clear_button();
     update_edit_mode_leds();
+    
+    bpm = UpdateBPMFromPotentiometer();
 
     /* USER CODE END WHILE */
 
@@ -183,6 +191,7 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* Prevent unused argument(s) compilation warning */
@@ -201,7 +210,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     else if(htim->Instance == TIM3) 
     {    
         static uint32_t tick_counter = 0;
-        uint32_t ticks_per_slot = (15000/120) / 10; 
+        uint32_t ticks_per_slot = (15000/bpm) / 10; 
     
         tick_counter++;
     
