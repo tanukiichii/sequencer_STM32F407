@@ -85,8 +85,7 @@ void handle_mode_button(void)
             }
             else if(current_mode == EDIT) 
             {
-                set_current_mode(MUTE);
-                exit_sample_edit_mode();
+                set_current_mode(PLAY);
             }
         }
     }
@@ -136,10 +135,21 @@ void handle_tm1638_buttons(void)
     last_key_state = current_keys;
 }
 
-void handle_control_button (void)
+void handle_clear_button (void)
 {
+  
   if(HAL_GPIO_ReadPin(BTN_GPIO, BTN_Pin))
   {
-    init_pattern();
+    SEQ_MODE current_mode = get_current_mode();
+    
+    if(current_mode == EDIT)
+    {
+      exit_sample_edit_mode();
+      LEDS_AllOff();
+    }
+    else
+    {
+      init_pattern();
+    }
   }     
 }

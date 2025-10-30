@@ -115,6 +115,7 @@ int main(void)
   
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim2);
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -125,28 +126,9 @@ int main(void)
     SEQ_MODE current_mode = get_current_mode();
     handle_mode_button();
     handle_tm1638_buttons();
-    handle_control_button();
-       
-    
-    /*    switch (current_mode)
-    {
-      case MUTE:
-        LEDS_AllOff();
-        LEDS_On(1);
-        break;      
-    case PLAY:
-        LEDS_AllOff();
-        LEDS_On(2);
-        break;
-    case REC:
-      LEDS_AllOff();
-        LEDS_On(3);
-        break;
-    case EDIT:
-        LEDS_AllOff();
-        LEDS_On(4);
-        break;
-    }*/
+    handle_clear_button();
+    update_edit_mode_leds();
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -227,12 +209,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         {
             tick_counter = 0;
             
-            if(get_current_mode() == PLAY || get_current_mode() == REC) 
+            if(get_current_mode() != MUTE) 
             {
                 current_slot = (current_slot + 1) % NUM_SLOTS;
-                LEDS_IndicateSlot(current_slot);
                 play_samples_for_slot(current_slot);
+                
+                if(get_current_mode() == PLAY || get_current_mode() == REC)
+                {
+                  LEDS_IndicateSlot(current_slot);
+                }
             }
+            
         }
     } 
 }
