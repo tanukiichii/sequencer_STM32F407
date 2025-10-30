@@ -23,15 +23,14 @@ const SampleInfo samples[NUM_SAMPLES] = {
     {12000, play_conga}           // 16. ?????
 };
 
-// ??????? ?????????? ????????????????
 void play_sample(uint8_t sample_number) 
 {
-    if(sample_number > 0 && sample_number <= NUM_SAMPLES) 
+    if(sample_number >= 0 && sample_number <= NUM_SAMPLES) 
     {
         uint8_t sample_idx = sample_number;
         audio_state.total_samples = samples[sample_idx].total_samples;
         audio_state.sample_index = 0;
-        audio_state.is_playing = sample_number;
+        audio_state.is_playing = sample_number + 1;
     }
 }
 
@@ -42,7 +41,6 @@ void stop_sample(void)
     audio_state.total_samples = 0;
 }
 
-// ??????? ??? ?????? ?? callback ???????
 void audio_callback(void)
 {
     if(audio_state.is_playing == 0 || 
@@ -52,7 +50,6 @@ void audio_callback(void)
         return;
     }
     
-    // ??????????????? ???????? ??????
     uint8_t sample_idx = audio_state.is_playing - 1;
     float sample = samples[sample_idx].play_func(audio_state.sample_index, 
                                                 audio_state.total_samples);
@@ -62,7 +59,6 @@ void audio_callback(void)
     audio_state.sample_index++;
 }
 
-// ?????????? ??????? ???????
 float play_kick(uint32_t sample_index, uint32_t total_samples) {
     float t = (float)sample_index / F_SAMPLE;
     float envelope = expf(-10.0f * t);
