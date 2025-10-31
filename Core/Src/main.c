@@ -31,6 +31,7 @@
 #include "audio.h"
 #include "bpm.h"
 #include "buttons.h"
+#include "effects.h"
 #include "leds.h"
 #include "modes.h"
 #include "pattern.h"
@@ -116,6 +117,7 @@ int main(void)
   init_pattern();
   LEDS_Init();
   mode_handler_init();
+  Reverb_Init();
   
   HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
   
@@ -133,9 +135,11 @@ int main(void)
     handle_mode_button();
     handle_tm1638_buttons();
     handle_clear_button();
+    handle_fx_button();
     update_edit_mode_leds();
     
     bpm = UpdateBPMFromPotentiometer();
+    
 
     /* USER CODE END WHILE */
 
@@ -223,7 +227,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
                 current_slot = (current_slot + 1) % NUM_SLOTS;
                 play_samples_for_slot(current_slot);
                 
-                if(get_current_mode() == PLAY || get_current_mode() == REC)
+                if(get_current_mode() != EDIT)
                 {
                   LEDS_IndicateSlot(current_slot);
                 }
