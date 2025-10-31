@@ -2,6 +2,7 @@
 #define __MODES_H__
 
 #include <stdint.h>
+#include "audio.h"
 #include "stm32f4xx_hal.h"
 #include "pattern.h"
 #include "tm1638.h"
@@ -16,6 +17,7 @@ typedef enum
   EDIT,
   PLAY,
   REC,
+  FX,
 } SEQ_MODE;
 
 //Mode initialization 
@@ -31,6 +33,7 @@ void handle_mute_mode(uint8_t button_id);
 void handle_edit_mode(uint8_t button_id);
 void handle_play_mode(uint8_t button_id);
 void handle_rec_mode(uint8_t button_id);
+void handle_fx_mode(uint8_t button_id);
 void handle_button_press(uint8_t button_id, SEQ_MODE mode);
 
 #endif //MODES_H

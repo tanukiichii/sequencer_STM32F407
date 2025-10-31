@@ -23,8 +23,9 @@ extern Reverb reverb;
 
 void Reverb_Init(void);
 float Reverb_Process(float input_sample);
-void Reverb_SetWetLevel(float level);
 void Reverb_Toggle(void);
+void Reverb_Enable(void);  
+void Reverb_Disable(void);
 
 #endif
 
