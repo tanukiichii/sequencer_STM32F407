@@ -1,10 +1,14 @@
 #include "buttons.h"
 #include "modes.h"
 #include "tm1638.h"
+#include "effects.h"
 
 static uint16_t last_key_state = 0;
+
 static uint32_t mode_button_press_time = 0;
 static uint8_t mode_button_was_pressed = 0;
+
+static uint8_t fx_button_was_pressed = 0;
 
 uint8_t is_mode_button_pressed(void)
 {
@@ -152,4 +156,57 @@ void handle_clear_button (void)
       init_pattern();
     }
   }     
+}
+
+uint8_t is_fx_button_pressed(void)
+{
+    static uint8_t last_state = 0;
+    static uint32_t last_change_time = 0;
+    
+    GPIO_PinState pin_state = HAL_GPIO_ReadPin(FX_GPIO, FX_Pin);
+    
+    uint8_t current_state = (pin_state == GPIO_PIN_SET); 
+    
+    uint32_t current_time = HAL_GetTick();
+    
+    // ???????????
+    if(current_state != last_state) 
+    {
+        if(current_time - last_change_time > MODE_CHANGE_DEBOUNCE_MS) 
+        {
+            last_state = current_state;
+            last_change_time = current_time;
+        }
+    }
+    else 
+    {
+        last_change_time = current_time;
+    }
+    
+    return last_state;
+}
+
+// ??????? ??? ????????? ??????? FX ??????
+void handle_fx_button(void)
+{
+    static uint8_t last_button_state = 0;
+    uint8_t current_button_state = is_fx_button_pressed();
+    uint32_t current_time = HAL_GetTick();
+    
+    // ??????????? ??????? (???????? ?????)
+    if(current_button_state && !last_button_state) 
+    {
+        fx_button_was_pressed = 1;
+    }
+    
+    // ??????????? ?????????? (?????? ?????)
+    if(!current_button_state && last_button_state) 
+    {
+        fx_button_was_pressed = 0;
+
+        Reverb_Toggle();
+
+    }
+    
+    last_button_state = current_button_state;
 }

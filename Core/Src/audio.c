@@ -119,9 +119,9 @@ void audio_callback(void)
             }
         }
     }
+    float processed_sample = Reverb_Process(mixed_sample);
     
-    //Converting to DAC
-    uint32_t dac_val = (uint32_t)((mixed_sample + 1.0f) * 127.0f);
+    uint32_t dac_val = (uint32_t)((processed_sample + 1.0f) * 127.0f);
     
     //Limiting the DAC value
     if(dac_val > 255) dac_val = 255;
