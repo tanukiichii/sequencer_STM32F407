@@ -4,6 +4,7 @@
 #include "effects.h"
 
 static uint16_t last_key_state = 0;
+static uint16_t previous_tm1638_keys = 0;
 
 static uint32_t mode_button_press_time = 0;
 static uint8_t mode_button_was_pressed = 0;
@@ -91,6 +92,11 @@ void handle_mode_button(void)
             {
                 set_current_mode(PLAY);
             }
+            else if(current_mode == FX)
+            {
+                set_current_mode(PLAY);
+            }
+
         }
     }
     
@@ -117,7 +123,8 @@ void handle_tm1638_buttons(void)
     static uint32_t last_read_time = 0;
     uint32_t current_time = HAL_GetTick();
     
-    if(current_time - last_read_time < 50) {
+    if(current_time - last_read_time < 50) 
+    {
         return;
     }
     last_read_time = current_time;
@@ -126,16 +133,43 @@ void handle_tm1638_buttons(void)
     uint16_t key_changes = current_keys ^ last_key_state;
     SEQ_MODE current_mode = get_current_mode();
     
-    if(key_changes & current_keys) 
+    if (current_mode == FX) 
     {
-        for(uint8_t i = 0; i < 16; i++) {
-            if((key_changes & (1 << i)) && (current_keys & (1 << i))) 
+        uint16_t released_keys = previous_tm1638_keys & ~current_keys;
+        for(uint8_t i = 0; i < 16; i++) 
+        {
+            if(released_keys & (1 << i)) 
             {
-                handle_button_press(i, current_mode);
+                handle_fx_button_release(i);
+            }
+        }
+        
+        if(key_changes & current_keys) 
+        {
+            for(uint8_t i = 0; i < 16; i++) 
+            {
+                if((key_changes & (1 << i)) && (current_keys & (1 << i))) 
+                {
+                    handle_button_press(i, current_mode);
+                }
+            }
+        }
+    }
+    else 
+    {
+        if(key_changes & current_keys) 
+        {
+            for(uint8_t i = 0; i < 16; i++) 
+            {
+                if((key_changes & (1 << i)) && (current_keys & (1 << i))) 
+                {
+                    handle_button_press(i, current_mode);
+                }
             }
         }
     }
     
+    previous_tm1638_keys = current_keys;
     last_key_state = current_keys;
 }
 
@@ -169,7 +203,6 @@ uint8_t is_fx_button_pressed(void)
     
     uint32_t current_time = HAL_GetTick();
     
-    // ???????????
     if(current_state != last_state) 
     {
         if(current_time - last_change_time > MODE_CHANGE_DEBOUNCE_MS) 
@@ -186,25 +219,22 @@ uint8_t is_fx_button_pressed(void)
     return last_state;
 }
 
-// ??????? ??? ????????? ??????? FX ??????
 void handle_fx_button(void)
 {
     static uint8_t last_button_state = 0;
     uint8_t current_button_state = is_fx_button_pressed();
     uint32_t current_time = HAL_GetTick();
     
-    // ??????????? ??????? (???????? ?????)
     if(current_button_state && !last_button_state) 
     {
         fx_button_was_pressed = 1;
     }
     
-    // ??????????? ?????????? (?????? ?????)
     if(!current_button_state && last_button_state) 
     {
         fx_button_was_pressed = 0;
 
-        Reverb_Toggle();
+        set_current_mode(FX);
 
     }
     

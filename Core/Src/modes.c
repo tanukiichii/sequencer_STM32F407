@@ -2,10 +2,14 @@
 
 static SEQ_MODE current_mode = MUTE;
 static uint8_t edit_mode_sample = 0;
+
 static uint32_t mode_button_press_time = 0;
 static uint8_t mode_button_was_pressed = 0;
+
 static uint32_t last_mode_change_time = 0;
-static uint8_t double_click_detected = 0;
+
+static uint16_t fx_held_buttons = 0;
+static uint32_t fx_button_press_time[16] = {0};
 
 void mode_handler_init(void)
 {
@@ -13,7 +17,6 @@ void mode_handler_init(void)
     mode_button_press_time = 0;
     mode_button_was_pressed = 0;
     last_mode_change_time = 0;
-    double_click_detected = 0;
 }
 
 
@@ -48,9 +51,8 @@ void handle_mode_transition(SEQ_MODE old_mode, SEQ_MODE new_mode)
             stop_pattern_playback();
             LEDS_AllOff();
             break;
-            
+
         case EDIT:
-            //stop_pattern_playback();
             start_pattern_playback();
             LEDS_AllOff();
             break;
@@ -60,6 +62,10 @@ void handle_mode_transition(SEQ_MODE old_mode, SEQ_MODE new_mode)
             break;
             
         case REC:
+            start_pattern_playback();
+            break;
+            
+        case FX:
             start_pattern_playback();
             break;
     }
@@ -111,19 +117,41 @@ void handle_edit_mode(uint8_t button_id)
 
 void handle_play_mode(uint8_t button_id)
 {
-    play_sample(button_id);
-    
-    LEDS_IndicateSampleTrigger(button_id);
+    play_sample(button_id);    
 }
 
 void handle_rec_mode(uint8_t button_id)
 {
     record_sample_to_slot(current_slot, button_id);
     
-    play_sample(button_id);
-    
-    //LEDS_AddSampleToSlot(current_slot, button_id);
-    //LEDS_IndicateSampleTrigger(button_id);
+    play_sample(button_id);    
+}
+  
+void handle_fx_mode(uint8_t button_id)
+{
+    if (!(fx_held_buttons & (1 << button_id))) 
+    {
+        fx_held_buttons |= (1 << button_id);
+        fx_button_press_time[button_id] = HAL_GetTick();
+        
+        if (button_id == 0) 
+        {
+            reverb.enabled = 1;
+        }        
+    }
+}
+
+void handle_fx_button_release(uint8_t button_id)
+{
+    if (fx_held_buttons & (1 << button_id)) 
+    {
+        fx_held_buttons &= ~(1 << button_id);
+        
+        if (button_id == 0) 
+        {
+            reverb.enabled = 0;
+        }        
+    }
 }
 
 void handle_button_press(uint8_t button_id, SEQ_MODE mode)
@@ -145,5 +173,7 @@ void handle_button_press(uint8_t button_id, SEQ_MODE mode)
         case REC:
             handle_rec_mode(button_id);
             break;
+        case FX:
+            handle_fx_mode(button_id);
     }
 }

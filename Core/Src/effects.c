@@ -34,3 +34,13 @@ void Reverb_Toggle(void)
 {
     reverb.enabled = !reverb.enabled;
 }
+
+void Reverb_Enable(void)
+{
+    reverb.enabled = 1;
+}
+
+void Reverb_Disable(void)
+{
+    reverb.enabled = 0;
+}
