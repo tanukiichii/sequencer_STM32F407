@@ -2,11 +2,13 @@
 
 static SEQ_MODE current_mode = MUTE;
 static uint8_t edit_mode_sample = 0;
-
 static uint32_t mode_button_press_time = 0;
 static uint8_t mode_button_was_pressed = 0;
-
 static uint32_t last_mode_change_time = 0;
+static uint8_t double_click_detected = 0;
+
+static uint8_t recorded_fx[2] = {0};  
+static uint8_t active_fx[2] = {0};   
 
 static uint16_t fx_held_buttons = 0;
 static uint32_t fx_button_press_time[16] = {0};
@@ -17,14 +19,17 @@ void mode_handler_init(void)
     mode_button_press_time = 0;
     mode_button_was_pressed = 0;
     last_mode_change_time = 0;
+    double_click_detected = 0;
+    memset(recorded_fx, 0, sizeof(recorded_fx));
+    memset(active_fx, 0, sizeof(active_fx));
+    fx_held_buttons = 0;
+    memset(fx_button_press_time, 0, sizeof(fx_button_press_time));
 }
-
 
 SEQ_MODE get_current_mode(void)
 {
     return current_mode;
 }
-
 
 void set_current_mode(SEQ_MODE new_mode) 
 {
@@ -37,6 +42,17 @@ void set_current_mode(SEQ_MODE new_mode)
         handle_mode_transition(old_mode, new_mode);
     }
 }
+
+uint8_t is_fx_active(uint8_t fx_id)
+{
+    if (fx_id < 16) 
+    {
+        return (active_fx[fx_id / 8] >> (fx_id % 8)) & 0x01;
+    }
+    return 0;
+}
+
+
 
 void handle_mode_transition(SEQ_MODE old_mode, SEQ_MODE new_mode)
 {
@@ -51,7 +67,7 @@ void handle_mode_transition(SEQ_MODE old_mode, SEQ_MODE new_mode)
             stop_pattern_playback();
             LEDS_AllOff();
             break;
-
+            
         case EDIT:
             start_pattern_playback();
             LEDS_AllOff();
@@ -68,9 +84,12 @@ void handle_mode_transition(SEQ_MODE old_mode, SEQ_MODE new_mode)
         case FX:
             start_pattern_playback();
             break;
+            
+        case FX_REC:
+            start_pattern_playback();
+            break;
     }
 }
-
 
 void handle_mute_mode(uint8_t button_id)
 {
@@ -80,6 +99,7 @@ void handle_mute_mode(uint8_t button_id)
 
 void handle_edit_mode(uint8_t button_id)
 {
+  
   if (!is_editing_sample()) 
     {
         enter_sample_edit_mode(button_id);
@@ -113,46 +133,75 @@ void handle_edit_mode(uint8_t button_id)
             LEDS_On(button_id + 1);
         }
     }
+  
 }
 
 void handle_play_mode(uint8_t button_id)
 {
-    play_sample(button_id);    
+    play_sample(button_id);
+    
+    LEDS_IndicateSampleTrigger(button_id);
 }
 
 void handle_rec_mode(uint8_t button_id)
 {
     record_sample_to_slot(current_slot, button_id);
     
-    play_sample(button_id);    
+    play_sample(button_id);
 }
-  
+
+
 void handle_fx_mode(uint8_t button_id)
 {
-    if (!(fx_held_buttons & (1 << button_id))) 
-    {
-        fx_held_buttons |= (1 << button_id);
-        fx_button_press_time[button_id] = HAL_GetTick();
-        
-        if (button_id == 0) 
-        {
-            reverb.enabled = 1;
-        }        
-    }
+  if (!(fx_held_buttons & (1 << button_id))) 
+      {
+          fx_held_buttons |= (1 << button_id);
+          fx_button_press_time[button_id] = HAL_GetTick();
+          
+          if (button_id == 0) 
+          {
+              reverb.enabled = 1;
+          }
+
+      }
 }
 
 void handle_fx_button_release(uint8_t button_id)
 {
-    if (fx_held_buttons & (1 << button_id)) 
+   if (fx_held_buttons & (1 << button_id)) 
     {
         fx_held_buttons &= ~(1 << button_id);
         
         if (button_id == 0) 
         {
             reverb.enabled = 0;
-        }        
+        }
     }
 }
+
+void handle_fx_rec_mode(uint8_t button_id)
+{
+    if (is_fx_recorded(button_id)) 
+    {
+        recorded_fx[button_id / 8] &= ~(1 << (button_id % 8));
+        if (is_fx_active(button_id)) 
+        {
+            apply_fx(button_id, 0);
+            active_fx[button_id / 8] &= ~(1 << (button_id % 8));
+        }
+        LEDS_Off(button_id + 1);
+    }
+    else 
+    {
+        recorded_fx[button_id / 8] |= (1 << (button_id % 8));
+        apply_fx(button_id, 1);
+        active_fx[button_id / 8] |= (1 << (button_id % 8));
+        LEDS_On(button_id + 1);
+        HAL_Delay(200);
+    }
+    
+}
+
 
 void handle_button_press(uint8_t button_id, SEQ_MODE mode)
 {
@@ -173,7 +222,94 @@ void handle_button_press(uint8_t button_id, SEQ_MODE mode)
         case REC:
             handle_rec_mode(button_id);
             break;
+            
         case FX:
             handle_fx_mode(button_id);
+            break;
+            
+        case FX_REC:
+            handle_fx_rec_mode(button_id);
+            break;
     }
+}
+
+void apply_fx(uint8_t fx_id, uint8_t enable)
+{
+    switch (fx_id) 
+    {
+        case 0: 
+            reverb.enabled = enable;
+            break;
+
+        default:
+            if (enable) 
+            {
+                reverb.enabled = 1;
+            }
+            else 
+            {
+                uint8_t any_fx_active = 0;
+                for (uint8_t i = 0; i < 16; i++) 
+                {
+                    if (i != fx_id && is_fx_active(i)) 
+                    {
+                        any_fx_active = 1;
+                        break;
+                    }
+                }
+                if (!any_fx_active) 
+                {
+                    reverb.enabled = 0;
+                }
+            }
+            break;
+    }
+}
+
+void toggle_fx(uint8_t fx_id)
+{
+    if (is_fx_recorded(fx_id)) 
+    {
+        uint8_t currently_active = is_fx_active(fx_id);
+        apply_fx(fx_id, !currently_active);
+        
+        if (currently_active) 
+        {
+            active_fx[fx_id / 8] &= ~(1 << (fx_id % 8));
+        }
+        else 
+        {
+            active_fx[fx_id / 8] |= (1 << (fx_id % 8));
+        }
+    }
+}
+
+uint8_t is_fx_recorded(uint8_t fx_id)
+{
+    if (fx_id < 16) 
+    {
+        return (recorded_fx[fx_id / 8] >> (fx_id % 8)) & 0x01;
+    }
+    return 0;
+}
+
+void update_global_fx(void)
+{
+    for (uint8_t i = 0; i < 16; i++) 
+    {
+        if (is_fx_active(i)) 
+        {
+            apply_fx(i, 1);
+        }
+    }
+}
+
+uint16_t get_recorded_fx_mask(void)
+{
+    return (recorded_fx[1] << 8) | recorded_fx[0];
+}
+
+uint16_t get_active_fx_mask(void)
+{
+    return (active_fx[1] << 8) | active_fx[0];
 }

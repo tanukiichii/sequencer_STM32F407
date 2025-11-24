@@ -11,6 +11,9 @@ static uint8_t mode_button_was_pressed = 0;
 
 static uint8_t fx_button_was_pressed = 0;
 
+static uint8_t mode_button_held_for_fx_rec = 0;
+static uint32_t fx_rec_mode_start_time = 0;
+
 uint8_t is_mode_button_pressed(void)
 {
     static uint8_t last_state = 0;
@@ -64,6 +67,9 @@ void handle_mode_button(void)
     static uint8_t last_button_state = 0;
     uint8_t current_button_state = is_mode_button_pressed();
     uint32_t current_time = HAL_GetTick();
+    SEQ_MODE current_mode = get_current_mode();
+    
+    handle_fx_button();
     
     if(current_button_state && !last_button_state) 
     {
@@ -77,9 +83,7 @@ void handle_mode_button(void)
         uint32_t press_duration = current_time - mode_button_press_time;
         
         if(press_duration < HOLD_TIME_MS) 
-        {
-            SEQ_MODE current_mode = get_current_mode();
-            
+        {            
             if(current_mode == MUTE) 
             {
                 set_current_mode(PLAY);
@@ -96,11 +100,27 @@ void handle_mode_button(void)
             {
                 set_current_mode(PLAY);
             }
+            else if(current_mode == FX_REC)
+            {
+              set_current_mode(FX);
+            }
 
         }
     }
     
-    if(current_button_state && get_current_mode() != REC) 
+    if(current_button_state && current_mode == FX) 
+    {
+        uint32_t press_duration = current_time - mode_button_press_time;
+        
+        if(press_duration >= HOLD_TIME_MS && !mode_button_held_for_fx_rec) 
+        {
+            mode_button_held_for_fx_rec = 1;
+            set_current_mode(FX_REC);
+            fx_rec_mode_start_time = current_time;
+        }
+    }
+    
+    if(current_button_state && current_mode != FX && current_mode != FX_REC) 
     {
         uint32_t press_duration = current_time - mode_button_press_time;
         
@@ -109,10 +129,14 @@ void handle_mode_button(void)
             set_current_mode(REC);
         }
     }
-    
     if(!current_button_state && get_current_mode() == REC) 
     {
         set_current_mode(PLAY);
+    }
+    
+    if(!current_button_state) 
+    {
+        mode_button_held_for_fx_rec = 0;
     }
     
     last_button_state = current_button_state;
