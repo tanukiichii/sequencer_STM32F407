@@ -28,7 +28,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "audio.h"
-//#include "bpm.h"
+#include "bpm.h"
 #include "buttons.h"
 #include "effects.h"
 #include "leds.h"
@@ -59,11 +59,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-float MySinVal;
-float sample_dt;
-uint16_t sample_N;
-uint16_t i_t;
-uint32_t MyDacVal;
+volatile uint16_t adc_value = 0;
+volatile uint16_t bpm;
+
+uint16_t I2S_dummy[4];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,9 +73,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-extern uint8_t btn_pushed = 0;
-uint16_t I2S_dummy[4];
-volatile uint16_t bpm = 120;
+
+
 /* USER CODE END 0 */
 
 /**
@@ -113,6 +111,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_I2C1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   
   CS43_Init(hi2c1, MODE_ANALOG);  // ?????: MODE_ANALOG!
@@ -144,9 +143,10 @@ int main(void)
     SEQ_MODE current_mode = get_current_mode();
     handle_mode_button();
     handle_tm1638_buttons();
-    handle_clear_button();
-    handle_fx_button();
-    update_edit_mode_leds();    
+    handle_clear_button();  
+    update_edit_mode_leds();
+    
+    bpm = UpdateBPMFromPotentiometer();
     
     update_global_fx();
     /* USER CODE END WHILE */
