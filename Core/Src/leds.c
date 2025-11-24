@@ -9,8 +9,8 @@ void LEDS_Init(void)
     
     __HAL_RCC_GPIOD_CLK_ENABLE();
     
-    GPIO_InitStruct.Pin = LED1_Pin | LED2_Pin | LED3_Pin | LED4_Pin | 
-                         LED5_Pin | LED6_Pin | LED7_Pin | LED8_Pin |
+    GPIO_InitStruct.Pin = LED1_Pin | LED2_Pin | LED3_Pin | LED4_Pin
+                          | LED6_Pin | LED7_Pin | LED8_Pin |
                          LED9_Pin | LED10_Pin | LED11_Pin | LED12_Pin |
                          LED13_Pin | LED14_Pin | LED15_Pin | LED16_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -26,8 +26,16 @@ void LEDS_Set(uint8_t led_num, uint8_t state)
     if (led_num < 1 || led_num > 16) return;
     
     GPIO_PinState pin_state = state ? GPIO_PIN_SET : GPIO_PIN_RESET;
-    uint16_t pin_mask = 1 << (led_num - 1);
-    HAL_GPIO_WritePin(LED_GPIO_Port, pin_mask, pin_state);
+    
+    if (led_num == 5)
+    {
+      HAL_GPIO_WritePin(LED1_GPIO_Port, LED5_Pin, pin_state);
+    }
+    else
+    {
+      uint16_t pin_mask = 1 << (led_num - 1);
+      HAL_GPIO_WritePin(LED_GPIO_Port, pin_mask, pin_state);
+    }
 }
 
 void LEDS_On(uint8_t led_num) 
@@ -129,7 +137,7 @@ void update_edit_mode_leds(void)
         }
         else 
         {
-            LEDS_Off(editing_sample + 1);
+            //LEDS_Off(editing_sample + 1);
             last_blink_time = current_time; 
             blink_state = 0;
         }
